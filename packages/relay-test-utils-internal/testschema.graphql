@@ -25,6 +25,7 @@ directive @stream(
 directive @fetchable(field_name: String!) on OBJECT
 
 type Query {
+  actors(first: Int): ActorsConnection
   checkinSearchQuery(query: CheckinSearchInput): CheckinSearchResult
   defaultSettings: Settings
   route(waypoints: [WayPoint!]!): Route
@@ -100,6 +101,7 @@ type RouteStep {
 }
 
 type Mutation {
+  actorDelete(input: ActorDeleteInput): ActorDeleteResponsePayload
   actorSubscribe(input: ActorSubscribeInput): ActorSubscribeResponsePayload
   actorNameChange(input: ActorNameChangeInput): ActorNameChangePayload
   applicationRequestDeleteAll(
@@ -127,6 +129,11 @@ type Subscription {
   commentCreateSubscribe(
     input: CommentCreateSubscriptionInput
   ): CommentCreateResponsePayload
+}
+
+input ActorDeleteInput {
+  clientMutationId: String
+  actorId: ID
 }
 
 input ActorSubscribeInput {
@@ -242,6 +249,22 @@ type PlainCommentBody {
 
 type MarkdownCommentBody {
   text: Text
+}
+
+type ActorsConnection {
+  count: Int
+  edges: [ActorsEdge]
+  pageInfo: PageInfo
+}
+
+type ActorsEdge {
+  cursor: String
+  node: Actor
+}
+
+type ActorDeleteResponsePayload {
+  clientMutationId: String
+  deletedActorId: ID
 }
 
 union CommentBody = PlainCommentBody | MarkdownCommentBody

@@ -321,11 +321,11 @@ function deleteNode(
   if (!parent) {
     return;
   }
-  if (pathToConnection.length < 2) {
+  if (pathToConnection.length < 1) {
     warning(
       false,
       'RelayDeclarativeMutationConfig: RANGE_DELETE ' +
-        'pathToConnection must include at least parent and connection',
+        'pathToConnection must include connection',
     );
     return;
   }

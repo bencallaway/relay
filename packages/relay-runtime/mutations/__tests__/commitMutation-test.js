@@ -439,6 +439,107 @@ describe('Configs: RANGE_DELETE', () => {
     expect(updater).toBeCalled();
     expect(callback.mock.calls.length).toBe(0);
   });
+
+  it('handles config with pathToConnection having a single element', () => {
+    const mutation = generateAndCompile(`
+      mutation ActorDeleteMutation(
+        $input: ActorDeleteInput
+      ) {
+        actorDelete(input: $input) {
+          deletedActorId
+        }
+      }
+    `).ActorDeleteMutation;
+    const actorID = '456';
+    const variables = {
+      input: {
+        actorID: actorID,
+      },
+    };
+    const optimisticResponse = {
+      actorDelete: {
+        deletedActorId: actorID,
+      },
+    };
+    const configs = [
+      {
+        type: 'RANGE_DELETE',
+        parentID: ROOT_ID,
+        connectionKeys: [{key: 'Root_actors'}],
+        deletedIDFieldName: 'deletedActorId',
+        pathToConnection: ['actors'],
+      },
+    ];
+    const {RootActorsQuery} = generateAndCompile(`
+      query RootActorsQuery {
+        actors(first: 10) @connection(key: "Root_actors") {
+          edges {
+            node {
+              id
+            }
+          }
+        }
+      }
+    `);
+    const payload = {
+      actors: {
+        count: 1,
+        edges: [
+          {
+            cursor: '<cursor>',
+            node: {
+              __typename: 'Actor',
+              id: actorID,
+            },
+          },
+        ],
+        page_info: {
+          end_cursor: '<cursor>',
+          has_next_page: true,
+          has_previous_page: false,
+          start_cursor: '<cursor>',
+        },
+      },
+    };
+    const operationDescriptor = createOperationDescriptor(RootActorsQuery, {});
+    environment.commitPayload(operationDescriptor, payload);
+    const optimisticUpdater = jest.fn();
+    const updater = jest.fn();
+    const snapshot = store.lookup(
+      createReaderSelector(
+        RootActorsQuery.fragment,
+        ROOT_ID,
+        {},
+        operationDescriptor.request,
+      ),
+    );
+    const callback = jest.fn();
+    store.subscribe(snapshot, callback);
+    commitMutation(environment, {
+      configs,
+      mutation,
+      optimisticResponse,
+      optimisticUpdater,
+      updater,
+      variables,
+    });
+    // Optimistically deletes
+    expect(callback.mock.calls.length).toBe(1);
+    expect(optimisticUpdater).toBeCalled();
+    callback.mockClear();
+    const operation = environment.executeMutation.mock.calls[0][0].operation;
+    environment.mock.resolve(operation, {
+      data: {
+        actorDelete: {
+          deletedActorId: actorID,
+        },
+      },
+    });
+    jest.runAllTimers();
+    // Does not need to fire again since server data should be the same
+    expect(updater).toBeCalled();
+    expect(callback.mock.calls.length).toBe(0);
+  });
 });
 
 describe('Configs: RANGE_ADD', () => {
